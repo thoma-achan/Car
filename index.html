@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Printable Parametric Car Studio Pro</title>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --panel: #151f32;
+      --panel-dark: #0f172a;
+      --border: #283548;
+      --accent: #38bdf8;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --success: #10b981;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body { display: flex; height: 100vh; overflow: hidden; background: var(--bg); color: var(--text); }
+
+    /* Sidebar */
+    #sidebar {
+      width: 370px;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      z-index: 10;
+      user-select: none;
+    }
+    header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel-dark);
+    }
+    header h1 { font-size: 1.1rem; font-weight: 700; color: var(--accent); letter-spacing: 0.01em; }
+    header p { font-size: 0.75rem; color: var(--muted); margin-top: 3px; }
+
+    .controls-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 18px;
+    }
+    .controls-scroll::-webkit-scrollbar { width: 6px; }
+    .controls-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .section-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin: 16px 0 9px;
+      font-weight: 700;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 4px;
+    }
+    .section-title:first-child { margin-top: 0; }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 7px;
+      margin-bottom: 10px;
+    }
+    .preset-btn {
+      background: var(--panel-dark);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .preset-btn:hover { border-color: var(--accent); color: var(--accent); background: #16243d; }
+
+    .control-group { margin-bottom: 10px; }
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      margin-bottom: 3px;
+    }
+    .control-label span.val { color: var(--accent); font-family: monospace; font-weight: 600; }
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+      height: 5px;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      margin: 7px 0;
+      cursor: pointer;
+    }
+    .checkbox-row input { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+
+    /* Swatches */
+    .swatch-row {
+      display: flex;
+      gap: 8px;
+      margin: 8px 0 4px;
+    }
+    .swatch {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.15s;
+    }
+    .swatch:hover, .swatch.active { transform: scale(1.15); border-color: #fff; }
+
+    /* Footer */
+    .footer {
+      padding: 14px 18px;
+      border-top: 1px solid var(--border);
+      background: var(--panel-dark);
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      font-size: 0.74rem;
+      color: var(--muted);
+      margin-bottom: 10px;
+      background: var(--bg);
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    .stats-grid div strong { color: var(--text); }
+    .export-btn {
+      width: 100%;
+      background: var(--success);
+      color: #042f1e;
+      font-weight: 700;
+      border: none;
+      padding: 11px;
+      border-radius: 7px;
+      font-size: 0.92rem;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    .export-btn:hover { filter: brightness(1.1); }
+
+    /* Viewport & Floating Bars */
+    #viewport { flex: 1; position: relative; }
+    #cam-bar {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      display: flex;
+      gap: 6px;
+      z-index: 5;
+    }
+    .cam-btn {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 11px;
+      border-radius: 6px;
+      font-size: 0.76rem;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+    }
+    .cam-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    #hud {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border);
+      padding: 9px 13px;
+      border-radius: 8px;
+      font-size: 0.76rem;
+      color: var(--muted);
+      pointer-events: none;
+      line-height: 1.45;
+    }
+    #hud strong { color: var(--text); }
+  </style>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+  <aside id="sidebar">
+    <header>
+      <h1>3D Printable Car Studio Pro</h1>
+      <p>Watertight Manifold Geometry • Ready for Cura / Prusa / Bambu</p>
+    </header>
+
+    <div class="controls-scroll">
+      <div class="section-title">Quick Vehicle Presets</div>
+      <div class="preset-grid">
+        <button class="preset-btn" onclick="applyPreset('supercar')">GT Supercar</button>
+        <button class="preset-btn" onclick="applyPreset('muscle')">Muscle Coupe</button>
+        <button class="preset-btn" onclick="applyPreset('cyber')">Cyber Wedge</button>
+        <button class="preset-btn" onclick="applyPreset('lemans')">Le Mans Proto</button>
+      </div>
+
+      <div class="section-title">Filament Color Preview</div>
+      <div class="swatch-row">
+        <div class="swatch active" style="background:#0ea5e9" onclick="setCarColor(0x0ea5e9, this)"></div>
+        <div class="swatch" style="background:#ef4444" onclick="setCarColor(0xef4444, this)"></div>
+        <div class="swatch" style="background:#f97316" onclick="setCarColor(0xf97316, this)"></div>
+        <div class="swatch" style="background:#84cc16" onclick="setCarColor(0x84cc16, this)"></div>
+        <div class="swatch" style="background:#eab308" onclick="setCarColor(0xeab308, this)"></div>
+        <div class="swatch" style="background:#e2e8f0" onclick="setCarColor(0xe2e8f0, this)"></div>
+        <div class="swatch" style="background:#334155" onclick="setCarColor(0x334155, this)"></div>
+      </div>
+
+      <div class="section-title">Chassis & Body Proportions</div>
+      <div class="control-group">
+        <div class="control-label"><span>Total Length</span><span class="val" id="val-length">110 mm</span></div>
+        <input type="range" id="length" min="75" max="160" step="1" value="110" oninput="updateCar()" />
+      </div>
+      <div class="control-group">
+        <div class="control-label"><span>Body Width</span><span class="val" id="val-width">48 mm</span></div>
+        <input type="range" id="width" min="34" max="72" step="1" value="48" oninput="updateCar()" />
+      </div>
+      <div class="control-group">
+        <div class="control-label"><span>Chassis Beltline Height</span><span class="val" id="val-chassisH">13.5 mm</span></div>
+        <input type="range" id="chassisH" min="9" max="24" step="0.5" value="13.5" oninput="updateCar()" />
+      </div>
+      <div class="control-group">
+        <div class="control-label"><span>Aerodynamic Nose Drop</span><span class="val" id="val-noseDrop">5.5 mm</span></div>
+        <input type="range" id="noseDrop" min="1" max="11" step="0.5" value="5.5" oninput="updateCar()" />
+      </div>
+      <div class="control-group">
+        <div class="control-label"><span>Fender Flare Bulge</span><span class="val" id="val-fenderFlare">2.5 mm</span></div>
+        <input type="range" id="fenderFlare" min="0" max="6" step="0.5" value="2.5" oninput="updateCar()" />
+      </div>
+
+      <div class="section-title">Cabin & Greenhouse</div>
+      <div class="control-group">
+        <div class="control-label"><span>Cabin Roof Height</span><span class="val" id="val-cabinH">10.5 mm</span></div>
+        <input type="range" id="cabinH" min="6" max="20" step="0.5" value="10.5" oninput="updateCar()" />
+      </div>
+      <div class="control-group">
+        <div class="control-label"><span>Cabin Length Ratio</span><span class="val" id="val-cabinLen">0.48</span></div>
+        <input type="range" id="cabinLen" min="0.32" max="0.68" step="0.02" value="0.48" oninput="updateCar()" />
+      </div>
+      <div class="control-group">
+        <div class="control-label"><span>Cabin Forward Shift</span><span class="val" id="val-cabinOffset">2 mm</span></div>
+        <input type="range" id="cabinOffset" min="-14" max="14" step="1" value="2" oninput="updateCar()" />
+      </div>
+      <div class="control-group">
+        <div class="control-label"><span>Roof Taper Ratio</span><span class="val" id="val-roofTaper">0.74</span></div>
+        <input type="range" id="roofTaper" min="0.55" max="0.95" step="0.02" value="0.74" oninput="updateCar()" />
+      </div>
+
+      <div class="section-title">Wheels, Rims & Stance</div>
+      <div class="control-group">
+        <div class="control-label"><span>Wheel Radius</span><span class="val" id="val-wheelR">11.5 mm</span></div>
+        <input type="range" id="wheelR" min="8" max="18" step="0.5" value="11.5" oninput="updateCar()" />
+      </div>
+      <div class="control-group">
+        <div class="control-label"><span>Tire Width</span><span class="val" id="val-wheelW">8.5 mm</span></div>
+        <input type="range" id="wheelW" min="5" max="14" step="0.5" value="8.5" oninput="updateCar()" />
+      </div>
+      <div class="control-group">
+        <div class="control-label"><span>Wheelbase Ratio</span><span class="val" id="val-wheelbase">0.60</span></div>
+        <input type="range" id="wheelbase" min="0.48" max="0.72" step="0.01" value="0.60" oninput="updateCar()" />
+      </div>
+
+      <div class="section-title">Aero Kit & Print Settings</div>
+      <div class="control-group">
+        <div class="control-label"><span>Rear Wing Height</span><span class="val" id="val-wingH">7.5 mm</span></div>
+        <input type="range" id="wingH" min="4" max="15" step="0.5" value="7.5" oninput="updateCar()" />
+      </div>
+      <label class="checkbox-row">
+        <span>Rear GT Spoiler + Endplates</span>
+        <input type="checkbox" id="spoiler" checked onchange="updateCar()" />
+      </label>
+      <label class="checkbox-row">
+        <span>Front Splitter + Rear Diffuser</span>
+        <input type="checkbox" id="aeroKit" checked onchange="updateCar()" />
+      </label>
+      <label class="checkbox-row">
+        <span>Headlights, Grille & Side Mirrors</span>
+        <input type="checkbox" id="details" checked onchange="updateCar()" />
+      </label>
+      <label class="checkbox-row">
+        <span>Support-Free Flat Underbody (Z=0)</span>
+        <input type="checkbox" id="flatBase" checked onchange="updateCar()" />
+      </label>
+      <label class="checkbox-row">
+        <span>Inspect Mesh Wireframe</span>
+        <input type="checkbox" id="wireframe" onchange="updateCar()" />
+      </label>
+    </div>
+
+    <div class="footer">
+      <div class="stats-grid">
+        <div>Dimensions: <strong id="bbox-readout">110×52×24 mm</strong></div>
+        <div>Triangles: <strong id="tri-readout">0</strong></div>
+        <div>Est. PLA (15%): <strong id="weight-readout">~18 g</strong></div>
+        <div>Manifold: <strong style="color:#10b981">✔ Z-Up Ready</strong></div>
+      </div>
+      <button class="export-btn" onclick="exportBinarySTL()">⬇ Download 3D Printable .STL</button>
+    </div>
+  </aside>
+
+  <main id="viewport">
+    <div id="cam-bar">
+      <button class="cam-btn" onclick="setCameraView('iso')">Isometric</button>
+      <button class="cam-btn" onclick="setCameraView('side')">Side Profile</button>
+      <button class="cam-btn" onclick="setCameraView('front')">Front</button>
+      <button class="cam-btn" onclick="setCameraView('rear')">Rear</button>
+      <button class="cam-btn" onclick="setCameraView('top')">Top</button>
+    </div>
+    <div id="hud">
+      <strong>Left Drag:</strong> Orbit &nbsp;|&nbsp; <strong>Right Drag:</strong> Pan &nbsp;|&nbsp; <strong>Scroll:</strong> Zoom<br/>
+      Build Plate Grid: <strong>200 × 200 mm</strong> (10 mm squares)
+    </div>
+  </main>
+
+  <script>
+    let scene, camera, renderer, controls, carGroup;
+    let bodyMat, tireMat, rimMat, accentMat;
+
+    function init() {
+      const container = document.getElementById('viewport');
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0b1120);
+
+      camera = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 1, 1200);
+      camera.position.set(115, 68, 125);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      container.appendChild(renderer.domElement);
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.target.set(0, 12, 0);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.06;
+
+      // Studio 3-Point Lighting
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x1e293b, 0.85));
+
+      const keyLight = new THREE.DirectionalLight(0xffffff, 0.95);
+      keyLight.position.set(90, 150, 110);
+      scene.add(keyLight);
+
+      const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.45);
+      rimLight.position.set(-110, 70, -90);
+      scene.add(rimLight);
+
+      // 200x200mm Print Bed Grid
+      const grid = new THREE.GridHelper(200, 20, 0x38bdf8, 0x1e293b);
+      scene.add(grid);
+
+      // Materials
+      bodyMat = new THREE.MeshStandardMaterial({
+        color: 0x0ea5e9,
+        roughness: 0.32,
+        metalness: 0.22,
+        flatShading: true
+      });
+      tireMat = new THREE.MeshStandardMaterial({
+        color: 0x182232,
+        roughness: 0.78,
+        metalness: 0.08,
+        flatShading: true
+      });
+      rimMat = new THREE.MeshStandardMaterial({
+        color: 0xe2e8f0,
+        roughness: 0.25,
+        metalness: 0.65,
+        flatShading: true
+      });
+      accentMat = new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        roughness: 0.4,
+        metalness: 0.3,
+        flatShading: true
+      });
+
+      carGroup = new THREE.Group();
+      scene.add(carGroup);
+
+      window.addEventListener('resize', onResize);
+      updateCar();
+      animate();
+    }
+
+    function setCarColor(hex, el) {
+      bodyMat.color.setHex(hex);
+      document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+      if (el) el.classList.add('active');
+    }
+
+    function setCameraView(mode) {
+      const views = {
+        iso:   [115, 68, 125],
+        side:  [0, 22, 165],
+        front: [155, 25, 0],
+        rear:  [-155, 28, 0],
+        top:   [0, 185, 1]
+      };
+      const pos = views[mode] || views.iso;
+      camera.position.set(...pos);
+      controls.target.set(0, 12, 0);
+      controls.update();
+    }
+
+    function getParams() {
+      const numericIds = [
+        'length', 'width', 'chassisH', 'noseDrop', 'fenderFlare',
+        'cabinH', 'cabinLen', 'cabinOffset', 'roofTaper',
+        'wheelR', 'wheelW', 'wheelbase', 'wingH'
+      ];
+      const p = {};
+      numericIds.forEach(id => {
+        p[id] = parseFloat(document.getElementById(id).value);
+        const noUnit = ['cabinLen', 'roofTaper', 'wheelbase'].includes(id);
+        document.getElementById('val-' + id).textContent = p[id] + (noUnit ? '' : ' mm');
+      });
+      p.spoiler = document.getElementById('spoiler').checked;
+      p.aeroKit = document.getElementById('aeroKit').checked;
+      p.details = document.getElementById('details').checked;
+      p.flatBase = document.getElementById('flatBase').checked;
+      p.wireframe = document.getElementById('wireframe').checked;
+      return p;
+    }
+
+    // Smooth cosine interpolation helper
+    function smoothStep(edge0, edge1, x) {
+      const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0 || 1e-6)));
+      return t * t * (3 - 2 * t);
+    }
+
+    /**
+     * Generates a 64-station sculpted, watertight car body with flared wheel arches
+     * and recessed mudguard wells so wheels never clip through the doors.
+     */
+    function createSculptedCarBody(p, baseClearance) {
+      const L = p.length;
+      const W = p.width;
+      const halfW = W / 2;
+      const cH = p.chassisH;
+      const cabH = p.cabinH;
+
+      const xRear = -L / 2;
+      const xFront = L / 2;
+      const wxOffset = (L * p.wheelbase) / 2;
+      const archRadius = p.wheelR + 2.4;
+
+      // Cabin longitudinal bounds
+      const cabSpan = L * p.cabinLen;
+      const xCabRear = -cabSpan / 2 + p.cabinOffset;
+      const xCabRoofRear = xCabRear + cabSpan * 0.28;
+      const xCabRoofFront = xCabRear + cabSpan * 0.72;
+      const xCabFront = xCabRear + cabSpan;
+
+      const numStations = 64;
+      const rings = [];
+
+      for (let i = 0; i <= numStations; i++) {
+        const u = i / numStations; // 0 = Rear bumper, 1 = Front bumper
+        const x = xRear + u * L;
+
+        // Longitudinal plan-view tapering at nose & tail
+        let planTaper = 1.0;
+        if (u < 0.08) planTaper = 0.84 + 0.16 * smoothStep(0.0, 0.08, u);
+        else if (u > 0.86) planTaper = 1.0 - 0.22 * smoothStep(0.86, 1.0, u);
+
+        // Beltline / Deck height profile (hood slope + rear deck)
+        let yDeck = baseClearance + cH;
+        if (x > xCabFront) {
+          const hoodT = smoothStep(xCabFront, xFront, x);
+          yDeck = (baseClearance + cH) - p.noseDrop * Math.pow(hoodT, 1.25);
+        } else if (x < xCabRear) {
+          const trunkT = smoothStep(xCabRear, xRear, x);
+          yDeck = (baseClearance + cH) - 1.5 * trunkT;
+        }
+
+        // Cabin greenhouse height profile
+        let cabFactor = 0.0;
+        if (x >= xCabRear && x <= xCabFront) {
+          if (x < xCabRoofRear) cabFactor = smoothStep(xCabRear, xCabRoofRear, x);
+          else if (x > xCabRoofFront) cabFactor = 1.0 - smoothStep(xCabRoofFront, xCabFront, x);
+          else cabFactor = 1.0;
+        }
+        const yTop = yDeck + cabH * cabFactor;
+        const roofCrown = 1.2 * cabFactor;
+
+        // Underbody height (support-free diffuser ramp at rear & splitter at front)
+        let yBot = baseClearance;
+        if (u < 0.09) yBot = baseClearance + (1.0 - smoothStep(0.0, 0.09, u)) * 3.5;
+        if (u > 0.94) yBot = baseClearance + smoothStep(0.94, 1.0, u) * 1.5;
+
+        // Wheel Arch & Mudguard Well calculation
+        const dFront = Math.abs(x - wxOffset);
+        const dRear = Math.abs(x + wxOffset);
+        const dAxle = Math.min(dFront, dRear);
+
+        let wLower = halfW * planTaper;
+        let yRocker = yBot + 2.2;
+        let yArchMid = yBot + (yDeck - yBot) * 0.56;
+        let flareExtra = 0;
+
+        // Smooth fender swell over front and rear axles
+        const swellFactor = Math.exp(-Math.pow(dAxle / (archRadius * 1.25), 2));
+        flareExtra = p.fenderFlare * swellFactor;
+
+        if (dAxle < archRadius) {
+          const archH = p.wheelR + Math.sqrt(Math.max(0, archRadius * archRadius - dAxle * dAxle));
+          // Recess the lower wall inward behind the wheel so tire sits in a real wheel well
+          wLower = Math.max(8, halfW - p.wheelW - 1.2);
+          yRocker = Math.max(yRocker, Math.min(yDeck - 1.2, archH));
+          yArchMid = Math.max(yArchMid, Math.min(yDeck - 0.4, archH + 1.0));
+        }
+
+        const wUnder = Math.min(wLower, halfW * 0.85 * planTaper);
+        const wMid = halfW * planTaper + flareExtra;
+        const wDec
